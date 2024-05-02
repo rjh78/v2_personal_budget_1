@@ -1,0 +1,14 @@
+{
+  "name": "envelope_budgeting_part_1",
+  "version": "1.0.0",
+  "description": "Codecademy project - writing API for a personal budgeting app",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Robert Hermann",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
