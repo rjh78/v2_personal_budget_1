@@ -8,7 +8,7 @@ const app = express();
 const bodyParser = require("body-parser");
 
 const PORT = 3000;
-const categoryArray = [
+let categoryArray = [
   {
     envId: 1,
     envName: "Food-Market",
@@ -25,19 +25,21 @@ const categoryArray = [
     envBudget: 80,
   },
 ];
-let envId = 1;
+let envId = 4;
 
 //parses all incoming request data as JSON, i.e. strings
 app.use(bodyParser.json());
 
 //create a new envelope where the envelope name and dollar
-//amt are sent in the request body
+//amt are sent in the request body.
+//POSTMAN TESTING NOTE: BODY DATA MUST BE FORMATTED AS JSON,
+//EXCEPT FOR INTEGERS WHICH ARE NOT QUOTED
 app.post("/envelopes", (req, res) => {
   const { envName, envBudget } = req.body;
   if (envName === "" || envBudget < 0) {
     res.status(404).send("Invalid request body - no name or budget.");
   }
-  const newCategory = { id: envId, name: envName, budget: envBudget };
+  const newCategory = { envId: envId, envName: envName, envBudget: envBudget };
   envId++;
   categoryArray.push(newCategory);
   res.status(201).json(newCategory);
@@ -66,22 +68,88 @@ app.get("/envelopes/:envId", (req, res) => {
   }
 });
 
-app.put("/envelopes/:envId", (req, res) => {
-  let searchId = req.params.envId;
+/*
+  Probably more complicated than it should be. Does the following:
+  1. updates envelope name only
+  2. updates envelope budget amount only
+  3. updates both name and budget amounts
+  4. subtracts expense from specified envelope budget
+*/
+app.put("/envelopes/:envId", (req, res, next) => {
+  let searchId = Number(req.params.envId);
+  let expenseAmt = req.body.expenseAmt;
   let newBudget = req.body.envBudget;
   let newName = req.body.envName;
-  const found = categoryArray.find((element) => element.envId === searchId);
+  let action = req.query.action;
+  let newBalance = 0;
+  let found = categoryArray.find((element) => element.envId === searchId);
+  const dollarErr = new Error(
+    "expenseAmt or envBudget must be a positive number."
+  );
+  const nameErr = new Error("Envelope Name is invalid or missing.");
+
   if (found) {
-    if (newBudget !== found.envBudget) {
-      found.envBudget = newBudget;
+    switch (action) {
+      case "updateName":
+        if (newName) {
+          found.envName = newName;
+        } else {
+          return next(nameErr);
+        }
+        break;
+      case "updateBudget":
+        if (newBudget > 0) {
+          found.envBudget = newBudget;
+        } else {
+          return next(dollarErr);
+        }
+        break;
+      case "updateNameAndBudget":
+        if (newBudget > 0 && newName) {
+          found.envName = newName;
+          found.envBudget = newBudget;
+        } else {
+          return next(
+            new Error("Either name or budget is invalid or missing.")
+          );
+        }
+        break;
+      case "subtractExpense":
+        if (expenseAmt > 0) {
+          found.envBudget -= expenseAmt;
+        } else {
+          return next(dollarErr);
+        }
+        break;
+      default:
+        return res.status(500).send("Invalid Action or no Action specified.");
     }
-    if (newName !== found.envName) {
-      found.envName = newName;
-    }
-    res.status(200).send("Updates made.");
+    res.status(200).json(categoryArray);
   } else {
     res.status(404).send(`Envelope ID: ${searchId} not found.`);
   }
+});
+
+//deletes the specified envelope id by finding the array
+//index of the specified id and then "splicing" it out
+//of the array
+app.delete("/envelopes/:envId", (req, res, next) => {
+  let searchId = Number(req.params.envId);
+  let envIndex = categoryArray.findIndex(
+    (element) => element.envId === searchId
+  );
+  if (envIndex === -1) {
+    return next(
+      new Error(`Envelope ID ${searchId} not found. No deletion done.`)
+    );
+  }
+  categoryArray.splice(envIndex, 1);
+  res.status(200).send(`Envelope ID ${searchId} successfully deleted.`);
+});
+
+app.use((err, req, res, next) => {
+  const status = err.status || 500;
+  res.status(status).send(err.message);
 });
 
 app.listen(PORT, function () {
