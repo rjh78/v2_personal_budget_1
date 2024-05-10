@@ -176,6 +176,7 @@ app.delete("/envelopes/:envId", (req, res, next) => {
   res.status(200).send(`Envelope ID ${searchId} successfully deleted.`);
 });
 
+//Error Handling
 app.use((err, req, res, next) => {
   const status = err.status || 500;
   res.status(status).send(err.message);
