@@ -130,6 +130,36 @@ app.put("/envelopes/:envId", (req, res, next) => {
   }
 });
 
+//POST request that uses two parameters and transfers
+//a value of dollars from one envelope to another.
+app.post("/envelopes/transfer/:from/:to", (req, res, next) => {
+  let fromId = Number(req.params.from);
+  let toId = Number(req.params.to);
+  let transferAmt = req.body.transferAmt;
+
+  let fromIndex = categoryArray.findIndex(
+    (element) => element.envId === fromId
+  );
+  let toIndex = categoryArray.findIndex((element) => element.envId === toId);
+
+  if (fromIndex === -1 || toIndex === -1) {
+    return next(
+      new Error(
+        `'Transfer From' id ${fromId} or 'Transfer To' id ${toId} not found.`
+      )
+    );
+  }
+
+  categoryArray[fromIndex].envBudget -= transferAmt;
+  categoryArray[toIndex].envBudget += transferAmt;
+
+  res
+    .status(200)
+    .send(
+      `${transferAmt} transferred from ${categoryArray[fromIndex].envName} to ${categoryArray[toIndex].envName}.`
+    );
+});
+
 //deletes the specified envelope id by finding the array
 //index of the specified id and then "splicing" it out
 //of the array
