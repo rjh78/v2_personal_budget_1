@@ -43,7 +43,6 @@ app.post("/envelopes", (req, res) => {
   envId++;
   categoryArray.push(newCategory);
   res.status(201).json(newCategory);
-  console.log(categoryArray);
 });
 
 //return all envelope categories created
